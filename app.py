@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import load_model
 import yfinance as yf
-import pickle
+import joblid
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -13,8 +13,7 @@ warnings.filterwarnings("ignore")
 @st.cache_resource
 def load_assets():
     model = load_model("lstm_stock_model.keras")
-    with open("scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
+    scaler = joblib.load("scaler.gz")
     return model, scaler
 
 model, scaler = load_assets()
