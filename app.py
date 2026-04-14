@@ -10,7 +10,17 @@ from tensorflow.keras.callbacks import EarlyStopping
 import yfinance as yf
 import warnings
 warnings.filterwarnings("ignore")
+from tensorflow.keras.models import load_model
+import pickle
 
+@st.cache_resource
+def load_assets():
+    model = load_model("lstm_stock_model.keras")
+    with open("scaler.pkl", "rb") as f:
+        scaler = pickle.load(f)
+    return model, scaler
+
+model, scaler = load_assets()
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="LSTM Stock Predictor", page_icon="📈", layout="wide")
 st.title("📈 LSTM Stock Price Predictor")
@@ -83,31 +93,8 @@ if run_btn:
     X_train, y_train = create_sequences(scaled[:split],  lookback)
     X_test,  y_test  = create_sequences(scaled[split:],  lookback)
 
-    # 3. Train
-    model = build_model((lookback, len(FEATURES)))
-    cb    = EarlyStopping(patience=10, restore_best_weights=True, monitor="val_loss")
-
-    progress = st.progress(0, text="Training LSTM…")
-    history_log = {"loss": [], "val_loss": []}
-
-    class StreamlitCallback(EarlyStopping):
-        def on_epoch_end(self, epoch, logs=None):
-            super().on_epoch_end(epoch, logs)
-            pct = min(int((epoch + 1) / epochs * 100), 100)
-            progress.progress(pct, text=f"Epoch {epoch+1}/{epochs} — loss: {logs['loss']:.4f}")
-            history_log["loss"].append(logs.get("loss"))
-            history_log["val_loss"].append(logs.get("val_loss"))
-
-    model.fit(
-        X_train, y_train,
-        epochs=epochs,
-        batch_size=32,
-        validation_split=0.1,
-        callbacks=[StreamlitCallback(patience=10, restore_best_weights=True)],
-        verbose=0,
-    )
-    progress.empty()
-    st.success("✅ Training complete!")
+    
+ st.success(f"✅ Model loaded! Predicting for **{ticker}**...")
 
     # 4. Evaluate
     pred_scaled = model.predict(X_test, verbose=0).flatten()
