@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import load_model
 import yfinance as yf
-import joblid
+import joblib
 import warnings
 warnings.filterwarnings("ignore")
 
