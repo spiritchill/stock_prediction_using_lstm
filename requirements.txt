@@ -1,8 +1,8 @@
 streamlit
+plotly
 tensorflow-cpu
 yfinance
 scikit-learn
 pandas
 numpy
 matplotlib
-plotly
