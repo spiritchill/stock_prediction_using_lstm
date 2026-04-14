@@ -1,6 +1,7 @@
 streamlit
 plotly
-tensorflow-cpu
+keras
+tf-keras
 yfinance
 scikit-learn
 pandas
