@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import load_model
 import yfinance as yf
-import joblib
+from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -13,7 +13,17 @@ warnings.filterwarnings("ignore")
 @st.cache_resource
 def load_assets():
     model = load_model("lstm_stock_model.keras")
-    scaler = joblib.load("scaler.gz")
+    
+    # Reconstruct scaler from numpy arrays — no pickle, no version issues
+    scaler = MinMaxScaler()
+    scaler.data_min_  = np.load("scaler_min.npy")
+    scaler.data_max_  = np.load("scaler_max.npy")
+    scaler.scale_     = 1 / (scaler.data_max_ - scaler.data_min_)
+    scaler.data_range_= scaler.data_max_ - scaler.data_min_
+    scaler.min_       = -scaler.data_min_ * scaler.scale_
+    scaler.n_features_in_ = len(scaler.data_min_)
+    scaler.n_samples_seen_ = 1
+    scaler.feature_names_in_ = None
     return model, scaler
 
 model, scaler = load_assets()
