@@ -30,7 +30,7 @@ model, scaler = load_assets()
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(page_title="LSTM Stock Predictor", page_icon="📈", layout="wide")
-st.title("📈 LSTM Stock Price Predictor")
+st.title("LSTM Stock Price Predictor")
 st.caption("Predict next-day closing prices using a stacked LSTM neural network.")
 
 # ── Sidebar controls ──────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ with st.sidebar:
     ticker        = st.text_input("Stock Ticker", value="AAPL").upper()
     period        = st.selectbox("Historical Period", ["2y", "3y", "5y", "10y"], index=2)
     forecast_days = st.slider("Forecast Days", 1, 30, 7)
-    run_btn       = st.button("🚀 Predict", use_container_width=True)
+    run_btn       = st.button("Predict", use_container_width=True)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 FEATURES = ["Close", "Volume", "Return", "MA_10", "MA_50", "Volatility"]
