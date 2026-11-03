@@ -51,7 +51,7 @@ def fetch_and_engineer(ticker, period):
             params = urlencode({
                 "symbol": ticker,
                 "interval": "1day",
-                "outputsize": 5000,
+                "outputsize": int(period[:-1]) * 252,
                 "order": "ASC",
                 "apikey": api_key,
             })
@@ -74,11 +74,15 @@ def fetch_and_engineer(ticker, period):
     if df is None or df.empty:
         try:
             df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
+            if df is None or df.empty:
+                errors.append("Yahoo Finance returned no data; the server may be rate-limited or blocked.")
         except Exception as e:
             errors.append(f"Yahoo Finance: {e}")
             df = None
     if df is None or df.empty:
         details = " | ".join(errors) or "No provider returned data"
+        if not api_key:
+            details += " Configure TWELVE_DATA_API_KEY in Streamlit Cloud Secrets to enable the alternate provider."
         raise ValueError(f"Could not fetch '{ticker}'. {details}")
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
