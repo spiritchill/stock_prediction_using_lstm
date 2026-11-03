@@ -7,6 +7,10 @@ from tensorflow.keras.models import load_model
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 from pathlib import Path
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+import json
+import os
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -33,9 +37,49 @@ def load_assets():
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_and_engineer(ticker, period):
-    df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
+    api_key = os.getenv("TWELVE_DATA_API_KEY")
+    if not api_key:
+        try:
+            api_key = st.secrets.get("TWELVE_DATA_API_KEY")
+        except FileNotFoundError:
+            pass
+
+    errors = []
+    df = None
+    if api_key:
+        try:
+            params = urlencode({
+                "symbol": ticker,
+                "interval": "1day",
+                "outputsize": 5000,
+                "order": "ASC",
+                "apikey": api_key,
+            })
+            request = Request(
+                f"https://api.twelvedata.com/time_series?{params}",
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            with urlopen(request, timeout=20) as response:
+                payload = json.load(response)
+            if "values" not in payload:
+                raise ValueError(payload.get("message", "No values returned"))
+            df = pd.DataFrame(payload["values"])
+            df = df.rename(columns=lambda column: column.title())
+            df["Datetime"] = pd.to_datetime(df["Datetime"])
+            df = df.set_index("Datetime").sort_index()
+            df = df[["Open", "High", "Low", "Close", "Volume"]].apply(pd.to_numeric)
+        except Exception as e:
+            errors.append(f"Twelve Data: {e}")
+
     if df is None or df.empty:
-        raise ValueError(f"No data returned for '{ticker}'. Yahoo may be blocking requests; try again later.")
+        try:
+            df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
+        except Exception as e:
+            errors.append(f"Yahoo Finance: {e}")
+            df = None
+    if df is None or df.empty:
+        details = " | ".join(errors) or "No provider returned data"
+        raise ValueError(f"Could not fetch '{ticker}'. {details}")
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     df = df.dropna()
