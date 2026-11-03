@@ -6,6 +6,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import load_model
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
+from pathlib import Path
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -15,20 +16,37 @@ st.set_page_config(page_title="LSTM Stock Predictor", page_icon="📈", layout="
 # ── Load model & scaler ───────────────────────────────────────────────────────
 @st.cache_resource
 def load_assets():
-    model = load_model("lstm_stock_model.keras")
-    
-    # Reconstruct scaler from numpy arrays — no pickle, no version issues
+    asset_dir = Path(__file__).resolve().parent
+    model = load_model(asset_dir / "lstm_stock_model.keras")
+    data_min = np.load(asset_dir / "scaler_min.npy")
+    data_max = np.load(asset_dir / "scaler_max.npy")
+
     scaler = MinMaxScaler()
-    scaler.data_min_  = np.load("scaler_min.npy")
-    scaler.data_max_  = np.load("scaler_max.npy")
-    scaler.scale_     = 1 / (scaler.data_max_ - scaler.data_min_)
-    scaler.data_range_= scaler.data_max_ - scaler.data_min_
-    scaler.min_       = -scaler.data_min_ * scaler.scale_
-    scaler.n_features_in_ = len(scaler.data_min_)
+    scaler.data_min_ = data_min
+    scaler.data_max_ = data_max
+    scaler.data_range_ = data_max - data_min
+    scaler.scale_ = 1 / scaler.data_range_
+    scaler.min_ = -data_min * scaler.scale_
+    scaler.n_features_in_ = len(data_min)
     scaler.n_samples_seen_ = 1
-    scaler.feature_names_in_ = None
     return model, scaler
 
+@st.cache_data(show_spinner=False, ttl=3600)
+def fetch_and_engineer(ticker, period):
+    df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
+    if df is None or df.empty:
+        raise ValueError(f"No data returned for '{ticker}'. Yahoo may be blocking requests; try again later.")
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    df = df.dropna()
+    df["Return"] = df["Close"].pct_change()
+    df["MA_10"] = df["Close"].rolling(10).mean()
+    df["MA_50"] = df["Close"].rolling(50).mean()
+    df["Volatility"] = df["Return"].rolling(10).std()
+    df = df.dropna()
+    if len(df) < 100:
+        raise ValueError(f"Only {len(df)} usable rows for '{ticker}'.")
+    return df
 model, scaler = load_assets()
 
 st.title("LSTM Stock Price Predictor")
@@ -47,20 +65,6 @@ FEATURES = ["Close", "Volume", "Return", "MA_10", "MA_50", "Volatility"]
 LOOKBACK  = 60   # must match what was used in save_model.py
 
 # ── Helper functions ──────────────────────────────────────────────────────────
-@st.cache_data(show_spinner=False)
-def fetch_and_engineer(ticker, period):
-    df = yf.download(ticker, period=period, auto_adjust=True)
-    # Fix MultiIndex columns from newer yfinance versions
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    df.dropna(inplace=True)
-    df["Return"]     = df["Close"].pct_change()
-    df["MA_10"]      = df["Close"].rolling(10).mean()
-    df["MA_50"]      = df["Close"].rolling(50).mean()
-    df["Volatility"] = df["Return"].rolling(10).std()
-    df.dropna(inplace=True)
-    return df
-
 def create_sequences(data, lookback):
     X, y = [], []
     for i in range(lookback, len(data)):

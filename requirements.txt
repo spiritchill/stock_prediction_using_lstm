@@ -2,6 +2,8 @@ streamlit
 plotly
 tensorflow-cpu
 yfinance
+
+curl_cffi>=0.15
 scikit-learn
 pandas
 numpy
