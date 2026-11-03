@@ -9,6 +9,9 @@ from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings("ignore")
 
+# ── Page config ───────────────────────────────────────────────────────────────
+st.set_page_config(page_title="LSTM Stock Predictor", page_icon="📈", layout="wide")
+
 # ── Load model & scaler ───────────────────────────────────────────────────────
 @st.cache_resource
 def load_assets():
@@ -28,8 +31,6 @@ def load_assets():
 
 model, scaler = load_assets()
 
-# ── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(page_title="LSTM Stock Predictor", page_icon="📈", layout="wide")
 st.title("LSTM Stock Price Predictor")
 st.caption("Predict next-day closing prices using a stacked LSTM neural network.")
 
